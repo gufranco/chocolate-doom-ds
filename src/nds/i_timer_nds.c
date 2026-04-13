@@ -1,52 +1,43 @@
 // NDS timer subsystem.
+// Uses VBlank interrupt counting for robust, race-free timing.
+// VBlank fires at 59.8261 Hz on NDS hardware.
 
 #include <nds.h>
 
 #include "config.h"
 #include "i_timer.h"
 
-static unsigned int start_ticks = 0;
+#define NDS_VBLANK_HZ 60
 
-// NDS timer tick rate: BUS_CLOCK/1024 = ~32728 Hz
-static inline unsigned int NDS_GetTicks(void)
-{
-	return TIMER0_DATA | (TIMER1_DATA << 16);
-}
+static volatile unsigned int vblank_count = 0;
 
-// Returns milliseconds since init
-static unsigned int NDS_GetMS(void)
+static void vblank_handler(void)
 {
-	// 32728 ticks/sec, so ticks * 1000 / 32728
-	// Simplified: ticks / 33 (close approximation)
-	unsigned int ticks = NDS_GetTicks() - start_ticks;
-	return ticks * 1000 / 32729;
+	vblank_count++;
 }
 
 void I_InitTimer(void)
 {
-	// Cascaded 32-bit free-running counter
-	TIMER0_DATA = 0;
-	TIMER0_CR = TIMER_ENABLE | TIMER_DIV_1024;
-	TIMER1_DATA = 0;
-	TIMER1_CR = TIMER_ENABLE | TIMER_CASCADE;
-
-	start_ticks = NDS_GetTicks();
+	irqSet(IRQ_VBLANK, vblank_handler);
+	irqEnable(IRQ_VBLANK);
 }
 
 int I_GetTime(void)
 {
-	return (int)(NDS_GetMS() * TICRATE / 1000);
+	return (int)(vblank_count * TICRATE / NDS_VBLANK_HZ);
 }
 
 int I_GetTimeMS(void)
 {
-	return (int)NDS_GetMS();
+	return (int)(vblank_count * 1000 / NDS_VBLANK_HZ);
 }
 
 void I_Sleep(int ms)
 {
-	unsigned int target = NDS_GetMS() + ms;
-	while (NDS_GetMS() < target)
+	int frames = ms / 17;
+	if (frames < 1)
+		frames = 1;
+	for (int i = 0; i < frames; i++)
 		swiWaitForVBlank();
 }
 
