@@ -73,7 +73,11 @@ int			showMessages = 1;
 
 // Blocky mode, has default, 0 = high, 1 = normal
 int			detailLevel = 0;
+#ifdef __NDS__
+int			screenblocks = 10;
+#else
 int			screenblocks = 9;
+#endif
 
 // temp for screenblocks (0-9)
 int			screenSize;
@@ -681,6 +685,13 @@ void M_SaveSelect(int choice)
             SetDefaultSaveName(choice);
         }
     }
+#ifdef __NDS__
+    // NDS has no keyboard. Auto-name and save immediately.
+    if (!savegamestrings[choice][0])
+        SetDefaultSaveName(choice);
+    M_DoSave(choice);
+    return;
+#endif
     saveCharIndex = strlen(savegamestrings[choice]);
 }
 
