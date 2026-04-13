@@ -10,11 +10,11 @@
 #include "doomtype.h"
 #include "d_iwad.h"
 #include "m_argv.h"
+#include "nds_panel.h"
 
 void D_DoomMain(void);
 
 #define DOOM_DIR "/doom/"
-#define MAX_WADS 16
 
 static const char *known_iwads[] = {
 	"doom2.wad", "plutonia.wad", "tnt.wad", "doom.wad", "doom1.wad",
@@ -32,10 +32,7 @@ static boolean is_known_iwad(const char *name)
 	return false;
 }
 
-// Scan /doom/ for IWAD files. Returns the number found.
-#define WAD_PATH_LEN 64
-
-static int find_wads(char found[][WAD_PATH_LEN], int max)
+static int find_wads(char found[][NDS_WAD_PATH_LEN], int max)
 {
 	DIR *dir = opendir(DOOM_DIR);
 	if (dir == NULL)
@@ -47,9 +44,9 @@ static int find_wads(char found[][WAD_PATH_LEN], int max)
 	while ((entry = readdir(dir)) != NULL && count < max)
 	{
 		if (entry->d_type == DT_REG && is_known_iwad(entry->d_name)
-		    && strlen(DOOM_DIR) + strlen(entry->d_name) < WAD_PATH_LEN)
+		    && strlen(DOOM_DIR) + strlen(entry->d_name) < NDS_WAD_PATH_LEN)
 		{
-			snprintf(found[count], WAD_PATH_LEN, "%s%s", DOOM_DIR, entry->d_name);
+			snprintf(found[count], NDS_WAD_PATH_LEN, "%s%s", DOOM_DIR, entry->d_name);
 			count++;
 		}
 	}
@@ -58,23 +55,13 @@ static int find_wads(char found[][WAD_PATH_LEN], int max)
 	return count;
 }
 
-// Show a WAD selection menu on the bottom screen. Returns the index chosen.
-static int wad_menu(char wads[][WAD_PATH_LEN], int count)
+static int wad_menu(char wads[][NDS_WAD_PATH_LEN], int count)
 {
 	int selected = 0;
 
 	while (1)
 	{
-		printf("\x1b[7;1H  Select a WAD file:\n\n");
-
-		for (int i = 0; i < count; i++)
-		{
-			const char *name = wads[i] + strlen(DOOM_DIR);
-			if (i == selected)
-				printf("  > %s    \n", name);
-			else
-				printf("    %s    \n", name);
-		}
+		NDS_Panel_DrawWADMenu(wads, count, selected);
 
 		swiWaitForVBlank();
 		scanKeys();
@@ -92,36 +79,35 @@ static int wad_menu(char wads[][WAD_PATH_LEN], int count)
 int main(void)
 {
 	defaultExceptionHandler();
-
 	setvbuf(stdout, NULL, _IONBF, 0);
 
+	// Console on sub screen
 	videoSetModeSub(MODE_0_2D);
 	vramSetBankC(VRAM_C_SUB_BG);
 	consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 22, 3, false, true);
 
-	printf("\x1b[2J");
-	printf("\x1b[1;1H================================");
-	printf("\x1b[2;1H  Chocolate Doom DS v0.2.0");
-	printf("\x1b[3;1H================================");
+	NDS_Panel_Init();
+	NDS_Panel_DrawBoot();
 
+	// Hardware detection
 	if (isDSiMode())
 	{
 		setCpuClock(true);
-		printf("\x1b[5;1H  Hardware: DSi (16 MB, 134 MHz)");
+		NDS_Panel_BootStatus("Hardware", "DSi (16 MB, 134 MHz)", true);
 	}
 	else
 	{
-		printf("\x1b[5;1H  Hardware: DS Lite (4 MB, 67 MHz)");
+		NDS_Panel_BootStatus("Hardware", "DS Lite (4 MB, 67 MHz)", true);
 	}
 
-	printf("\x1b[7;1H  Initializing FAT...");
+	// FAT init
+	boolean fat_ok = fatInitDefault();
+	NDS_Panel_BootStatus("FAT", fat_ok ? "OK" : "FAILED", fat_ok);
 
-	if (!fatInitDefault())
+	if (!fat_ok)
 	{
-		printf(" FAILED!");
-		printf("\x1b[9;1H  Insert SD card with WAD files.");
-		printf("\x1b[10;1H  Place .wad files in /doom/");
-		printf("\x1b[23;1H  Press START to exit.");
+		NDS_Panel_BootError("Insert SD card with WAD files.");
+		NDS_Panel_BootError("Place .wad files in /doom/");
 		while (1)
 		{
 			swiWaitForVBlank();
@@ -131,21 +117,18 @@ int main(void)
 		}
 	}
 
-	printf(" OK");
-
 	// Scan for WADs
-	char wads[MAX_WADS][WAD_PATH_LEN];
-	int wad_count = find_wads(wads, MAX_WADS);
+	char wads[NDS_MAX_WADS][NDS_WAD_PATH_LEN];
+	int wad_count = find_wads(wads, NDS_MAX_WADS);
 
 	if (wad_count == 0)
 	{
-		printf("\x1b[9;1H  No WAD files found in /doom/");
-		printf("\x1b[11;1H  Supported WADs:");
-		printf("\x1b[12;1H  doom.wad, doom1.wad, doom2.wad");
-		printf("\x1b[13;1H  plutonia.wad, tnt.wad");
-		printf("\x1b[14;1H  freedoom1.wad, freedoom2.wad");
-		printf("\x1b[15;1H  chex.wad, hacx.wad, freedm.wad");
-		printf("\x1b[23;1H  Press START to exit.");
+		NDS_Panel_BootError("No WAD files found in /doom/");
+		NDS_Panel_BootError("");
+		NDS_Panel_BootError("Supported WADs:");
+		NDS_Panel_BootError("doom.wad doom1.wad doom2.wad");
+		NDS_Panel_BootError("plutonia.wad tnt.wad");
+		NDS_Panel_BootError("freedoom1.wad freedoom2.wad");
 		while (1)
 		{
 			swiWaitForVBlank();
@@ -160,18 +143,18 @@ int main(void)
 	if (wad_count == 1)
 	{
 		chosen_wad = wads[0];
-		printf("\x1b[9;1H  Loading %s", chosen_wad + strlen(DOOM_DIR));
+		const char *name = strrchr(chosen_wad, '/');
+		name = name ? name + 1 : chosen_wad;
+		NDS_Panel_BootStatus("WAD", name, true);
 	}
 	else
 	{
 		int choice = wad_menu(wads, wad_count);
 		chosen_wad = wads[choice];
-		printf("\x1b[2J");
-		printf("\x1b[1;1H================================");
-		printf("\x1b[2;1H  Chocolate Doom DS v0.2.0");
-		printf("\x1b[3;1H================================");
-		printf("\x1b[9;1H  Loading %s", chosen_wad + strlen(DOOM_DIR));
 	}
+
+	NDS_Panel_SetWAD(chosen_wad);
+	NDS_Panel_DrawLoading(chosen_wad);
 
 	static char *nds_argv[] = { "chocolate-doom-ds", "-iwad", NULL, NULL };
 	nds_argv[2] = chosen_wad;

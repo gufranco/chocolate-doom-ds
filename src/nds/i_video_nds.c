@@ -7,6 +7,7 @@
 #include "config.h"
 #include "doomtype.h"
 #include "i_video.h"
+#include "nds_panel.h"
 #include "m_config.h"
 #include "v_video.h"
 #include "w_wad.h"
@@ -124,6 +125,8 @@ void I_FinishUpdate(void)
 		src += SCREENWIDTH;
 		dest += 512;
 	}
+
+	NDS_Panel_DrawGameplay();
 }
 
 void I_ReadScreen(pixel_t *scr)

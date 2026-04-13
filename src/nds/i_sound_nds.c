@@ -244,6 +244,15 @@ void I_OPL_DevMessages(char *result, size_t result_len)
 		result[0] = '\0';
 }
 
+int NDS_SoundCacheCount(void)
+{
+	int count = 0;
+	for (int i = 0; i < MAX_CACHED_SOUNDS; i++)
+		if (sound_cache[i].lumpnum >= 0)
+			count++;
+	return count;
+}
+
 // Dummy modules (not available on NDS)
 const sound_module_t sound_sdl_module = { NULL, 0 };
 const sound_module_t sound_pcsound_module = { NULL, 0 };

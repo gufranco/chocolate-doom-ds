@@ -17,6 +17,7 @@
 
 
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -707,10 +708,22 @@ void G_DoLoadLevel (void)
 	memset (players[i].frags,0,sizeof(players[i].frags)); 
     } 
 		 
-    P_SetupLevel (gameepisode, gamemap, 0, gameskill);    
-    displayplayer = consoleplayer;		// view the guy you are playing    
-    gameaction = ga_nothing; 
+    P_SetupLevel (gameepisode, gamemap, 0, gameskill);
+    displayplayer = consoleplayer;		// view the guy you are playing
+    gameaction = ga_nothing;
     Z_CheckHeap ();
+
+#ifdef __NDS__
+    {
+        char mapbuf[16];
+        if (gamemode == commercial)
+            snprintf(mapbuf, sizeof(mapbuf), "MAP%02d", gamemap);
+        else
+            snprintf(mapbuf, sizeof(mapbuf), "E%dM%d", gameepisode, gamemap);
+        extern void NDS_Panel_SetMap(const char *);
+        NDS_Panel_SetMap(mapbuf);
+    }
+#endif
     
     // clear cmd building stuff
 

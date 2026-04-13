@@ -80,16 +80,16 @@ void I_Quit(void)
 void I_Error(const char *error, ...)
 {
 	va_list args;
-
-	consoleDemoInit();
-	printf("\x1b[2J");
-	printf("\x1b[1;1H  FATAL ERROR:\n\n  ");
+	char buf[256];
 
 	va_start(args, error);
-	vprintf(error, args);
+	vsnprintf(buf, sizeof(buf), error, args);
 	va_end(args);
 
-	printf("\n\n  Press START to exit.");
+	extern void NDS_Panel_FatalError(const char *);
+	NDS_Panel_FatalError(buf);
+
+	printf("\x1b[8;1H\x1b[37;0m  Press START to exit.\x1b[39;0m");
 
 	while (1)
 	{
