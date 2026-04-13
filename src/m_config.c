@@ -2658,7 +2658,7 @@ void M_SetConfigDir(const char *dir)
         configdir = GetDefaultConfigDir();
     }
 
-    if (strcmp(configdir, exedir) != 0)
+    if (exedir != NULL && strcmp(configdir, exedir) != 0)
     {
         printf("Using %s for configuration and saves\n", configdir);
     }
@@ -2755,7 +2755,7 @@ char *M_GetSaveGameDir(const char *iwadname)
 #endif
     // If not "doing" a configuration directory (Windows), don't "do"
     // a savegame directory, either.
-    else if (!strcmp(configdir, exedir))
+    else if (exedir != NULL && !strcmp(configdir, exedir))
     {
 	savegamedir = M_StringDuplicate("");
     }

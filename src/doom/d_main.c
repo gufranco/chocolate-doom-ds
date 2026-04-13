@@ -1442,9 +1442,13 @@ void D_DoomMain (void)
     else
 #endif
     {
+#ifdef __NDS__
+        M_SetConfigDir("/doom/");
+#else
         // Auto-detect the configuration dir.
 
         M_SetConfigDir(NULL);
+#endif
     }
 
     //!
