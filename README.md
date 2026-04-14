@@ -1,102 +1,289 @@
-# Chocolate Doom
+<div align="center">
 
-Chocolate Doom aims to accurately reproduce the original DOS version of
-Doom and other games based on the Doom engine in a form that can be
-run on modern computers.
+<br>
 
-Originally, Chocolate Doom was only a Doom source port. The project
-now includes ports of Heretic and Hexen, and Strife.
+# Chocolate Doom DS
 
-Chocolate Doom’s aims are:
+**The original Doom on Nintendo DS, built from the real Chocolate Doom source code.**
 
- * To always be 100% Free and Open Source software.
- * Portability to as many different operating systems as possible.
- * Accurate reproduction of the original DOS versions of the games,
-   including bugs.
- * Compatibility with the DOS demo, configuration and savegame files.
- * To provide an accurate retro “feel” (display and input should
-   behave the same).
+<br>
 
-More information about the philosophy and design behind Chocolate Doom
-can be found in the PHILOSOPHY file distributed with the source code.
+[![Build](https://github.com/gufranco/chocolate-doom-ds/actions/workflows/main.yml/badge.svg)](https://github.com/gufranco/chocolate-doom-ds/actions)
+[![License: GPL-2.0](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](COPYING.md)
+[![Platform: NDS](https://img.shields.io/badge/Platform-Nintendo_DS-purple.svg)]()
 
-## Setting up gameplay
+</div>
 
-For instructions on how to set up Chocolate Doom for play, see the
-INSTALL file.
+---
 
-## Configuration File
+**8** NDS platform files  **5** SDL shims  **2,098** lines of NDS code  **33** lines changed in upstream Doom  **576 KB** ROM
 
-Chocolate Doom is compatible with the DOS Doom configuration file
-(normally named `default.cfg`). Existing configuration files for DOS
-Doom should therefore simply work out of the box. However, Chocolate
-Doom also provides some extra settings. These are stored in a
-separate file named `chocolate-doom.cfg`.
+## Why This Exists
 
-The configuration can be edited using the chocolate-setup tool.
+Chocolate Doom is the gold standard for vanilla-accurate Doom source ports on desktop. It runs on Windows, macOS, and Linux. It does not run on the Nintendo DS.
 
-## Command line options
+This project ports Chocolate Doom to the NDS by replacing the SDL platform layer with a minimal NDS-native layer. The Doom engine itself is untouched: the same renderer, the same physics, the same demo compatibility. The NDS layer handles video, input, sound, and timing using libnds and the ARM7 coprocessor.
 
-Chocolate Doom supports a number of command line parameters, including
-some extras that were not originally suported by the DOS versions. For
-binary distributions, see the CMDLINE file included with your
-download; more information is also available on the Chocolate Doom
-website.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## Playing TCs
+### Vanilla Accurate
+Same renderer, physics, and demo playback as the original DOS Doom. Zero gameplay modifications.
 
-With Vanilla Doom there is no way to include sprites in PWAD files.
-Chocolate Doom’s ‘-file’ command line option behaves exactly the same
-as Vanilla Doom, and trying to play TCs by adding the WAD files using
-‘-file’ will not work.
+</td>
+<td width="50%" valign="top">
 
-Many Total Conversions (TCs) are distributed as a PWAD file which must
-be merged into the main IWAD. Typically a copy of DEUSF.EXE is
-included which performs this merge. Chocolate Doom includes a new
-option, ‘-merge’, which will simulate this merge. Essentially, the
-WAD directory is merged in memory, removing the need to modify the
-IWAD on disk.
+### Minimal Upstream Diff
+Only 33 lines changed in Chocolate Doom source. All NDS code is additive, in separate files.
 
-To play TCs using Chocolate Doom, run like this:
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Fully Dockerized Build
+No local toolchain needed. One command builds the ROM inside a BlocksDS Docker container.
+
+</td>
+<td width="50%" valign="top">
+
+### DS Lite and DSi
+Adaptive memory allocation: 2.5 MB zone on DS Lite, 10 MB on DSi. DSi runs at 134 MHz.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Live Debug Panel
+Bottom screen shows FPS, frame count, zone memory, sound cache, and bug report URL during gameplay.
+
+</td>
+<td width="50%" valign="top">
+
+### GDB Debugging
+Connect GDB from Docker to melonDS. Full ARM9 register state, backtraces, and NDS memory regions.
+
+</td>
+</tr>
+</table>
+
+## Architecture
+
+```mermaid
+graph TD
+    subgraph ARM9 ["ARM9 (67/134 MHz)"]
+        DOOM[Doom Engine<br>59 C files, unmodified]
+        NDS_LAYER[NDS Platform Layer<br>8 C files]
+        SDL_SHIM[SDL Type Shims<br>5 headers]
+        PANEL[Bottom Screen Panel]
+    end
+
+    subgraph ARM7 ["ARM7 (33 MHz)"]
+        MAXMOD[MaxMod Audio]
+        SOUND_HW[Sound Hardware<br>16 PCM channels]
+        TOUCH[Touchscreen / RTC]
+    end
+
+    DOOM --> NDS_LAYER
+    DOOM --> SDL_SHIM
+    NDS_LAYER --> |FIFO| MAXMOD
+    NDS_LAYER --> PANEL
+    MAXMOD --> SOUND_HW
+    NDS_LAYER --> |VBlank IRQ| ARM9
+    ARM7 --> TOUCH
+```
+
+The NDS layer replaces SDL with direct hardware access:
+
+| SDL function | NDS replacement | File |
+|:-------------|:----------------|:-----|
+| SDL video | VRAM bitmap + affine scaling (320x200 to 256x192) | `i_video_nds.c` |
+| SDL audio | `soundPlaySample` via ARM7 MaxMod | `i_sound_nds.c` |
+| SDL input | D-pad/buttons + touchscreen to Doom events | `i_input_nds.c` |
+| SDL timer | VBlank interrupt counting at 60 Hz | `i_timer_nds.c` |
+| SDL headers | Minimal type stubs (no SDL linked) | `src/sdl_shim/` |
+
+## Supported WADs
+
+| WAD | Game |
+|:----|:-----|
+| `doom1.wad` | Doom Shareware |
+| `doom.wad` | Doom (full) |
+| `doom2.wad` | Doom II |
+| `plutonia.wad` | Final Doom: Plutonia |
+| `tnt.wad` | Final Doom: TNT |
+| `freedoom1.wad` | Freedoom Phase 1 |
+| `freedoom2.wad` | Freedoom Phase 2 |
+| `chex.wad` | Chex Quest |
+| `hacx.wad` | Hacx |
+
+Place WAD files in `/doom/` on the SD card. One WAD loads automatically. Multiple WADs show a selection menu.
+
+## Quick Start
+
+### Prerequisites
+
+| Tool | Install |
+|:-----|:--------|
+| Docker | [docker.com](https://www.docker.com/) |
+| melonDS | [melonds.kuribo64.net](https://melonds.kuribo64.net/) |
+
+### Build
+
+```bash
+git clone git@github.com:gufranco/chocolate-doom-ds.git
+cd chocolate-doom-ds
+make -f Makefile.nds build
+```
+
+### Run
+
+Copy `chocolate_doom_ds.nds` and a WAD file to your flashcart SD card:
 
 ```
-chocolate-doom -merge thetc.wad
+/doom/doom1.wad
+/chocolate_doom_ds.nds
 ```
 
-Here are some examples:
+Or test in the emulator:
+
+```bash
+mkdir -p ~/melonDS_sdcard/doom
+cp /path/to/doom1.wad ~/melonDS_sdcard/doom/
+cp chocolate_doom_ds.nds ~/melonDS_sdcard/
+
+make -f Makefile.nds run
+```
+
+### Controls
+
+| Button | Action |
+|:-------|:-------|
+| D-pad | Move / Turn |
+| A | Fire |
+| B | Use / Open |
+| X | Run |
+| Y | Cycle weapons |
+| L / R | Strafe |
+| START | Menu |
+| SELECT | Automap |
+| Touch | Mouse look |
+
+## Development
+
+| Command | Description |
+|:--------|:------------|
+| `make -f Makefile.nds build` | Build ARM7 + ARM9 + ROM |
+| `make -f Makefile.nds debug` | Build with ARM7 exception handler |
+| `make -f Makefile.nds clean` | Remove all build artifacts |
+| `make -f Makefile.nds run` | Open ROM in melonDS |
+| `make -f Makefile.nds gdb` | Connect GDB to melonDS via Docker |
+| `make -f Makefile.nds shell` | Interactive shell in build container |
+| `make -f Makefile.nds size` | Show ARM7 + ARM9 binary sizes |
+| `make -f Makefile.nds disasm` | Dump ARM9 disassembly |
+
+### Debugging
+
+Enable the GDB stub in melonDS (Settings > Devtools > Enable GDB stub, port 3333):
+
+```bash
+make -f Makefile.nds run     # start the game
+make -f Makefile.nds gdb     # attach debugger
+```
+
+GDB loads `.gdbinit` automatically with NDS memory regions and custom commands:
+
+| Command | Description |
+|:--------|:------------|
+| `nds-regs` | ARM9 register state |
+| `nds-bt` | Backtrace (20 frames) |
+| `nds-vram` | Dump framebuffer pixels |
+| `nds-zone` | Zone allocator free/total |
+| `nds-stack` | 32 words at stack pointer |
+
+<details>
+<summary><strong>Project structure</strong></summary>
 
 ```
-chocolate-doom -merge batman.wad -deh batman.deh vbatman.deh  (Batman Doom)
-chocolate-doom -merge aoddoom1.wad -deh aoddoom1.deh  (Army of Darkness Doom)
+arm7/
+  source/main.c          ARM7 coprocessor (audio, touch, RTC)
+  Makefile               ARM7 build rules
+src/
+  doom/                  Doom engine (59 files, unmodified)
+  nds/
+    i_video_nds.c        Video: 320x200 framebuffer, affine scaling
+    i_sound_nds.c        Sound: PCM cache, soundPlaySample
+    i_input_nds.c        Input: D-pad, buttons, touchscreen
+    i_timer_nds.c        Timer: VBlank counting at 60 Hz
+    i_system_nds.c       System: zone heap, error handler
+    i_main_nds.c         Entry point, WAD selector
+    i_stubs_nds.c        Stubs for unused subsystems
+    nds_panel.c          Bottom screen HUD
+    nds_panel.h          Panel API
+  sdl_shim/              SDL type stubs (no SDL linked)
+Makefile.arm9            ARM9 build (runs inside Docker)
+Makefile.nds             Host-side Docker wrapper
+Dockerfile               BlocksDS + gdb-multiarch
+docker-compose.yml       Build service with host networking
+.gdbinit                 GDB auto-config for NDS debugging
+.editorconfig            Code style
 ```
 
-## Other information
+</details>
 
- * Chocolate Doom includes a number of different options for music
-   playback. See the README.Music file for more details.
+## NDS Hardware
 
- * More information, including information about how to play various
-   classic TCs, is available on the Chocolate Doom website:
+| Component | Specification |
+|:----------|:-------------|
+| Main CPU (ARM9) | ARM946E-S, 67 MHz (134 MHz on DSi) |
+| Sub CPU (ARM7) | ARM7TDMI, 33 MHz |
+| Main RAM | 4 MB (16 MB on DSi) |
+| VRAM | 656 KB |
+| Screens | 2 x 256x192 |
+| Sound | 16 channels, PCM/ADPCM |
 
-     https://www.chocolate-doom.org/
+<details>
+<summary><strong>FAQ</strong></summary>
+<br>
 
-   You are encouraged to sign up and contribute any useful information
-   you may have regarding the port!
+<details>
+<summary><strong>Does this work on real hardware?</strong></summary>
+<br>
 
- * Chocolate Doom is not perfect. Although it aims to accurately
-   emulate and reproduce the DOS executables, some behavior can be very
-   difficult to reproduce. Because of the nature of the project, you
-   may also encounter Vanilla Doom bugs; these are intentionally
-   present; see the NOT-BUGS file for more information.
+Yes. Flash the ROM and WAD to an SD card, insert into a flashcart (R4, Acekard, etc.), and boot.
 
-   New bug reports, feedback, questions or suggestions can be submitted
-   to the issue tracker on Github:
+</details>
 
-     https://github.com/chocolate-doom/chocolate-doom/issues
+<details>
+<summary><strong>Why no music?</strong></summary>
+<br>
 
- * Source code patches are welcome, but please follow the style
-   guidelines - see the file named HACKING included with the source
-   distribution.
+Doom uses OPL2 FM synthesis for music. The OPL2 emulator needs more CPU than the 67 MHz ARM9 can spare while running the game at 35 fps. OPL on the ARM7 coprocessor is planned.
 
- * Chocolate Doom is distributed under the GNU GPL. See the COPYING
-   file for more information.
+</details>
+
+<details>
+<summary><strong>Why Chocolate Doom?</strong></summary>
+<br>
+
+Chocolate Doom prioritizes vanilla accuracy over features. Its clean C codebase and modular platform layer made the NDS port straightforward: replace SDL, keep everything else.
+
+</details>
+
+<details>
+<summary><strong>Can I use Heretic, Hexen, or Strife WADs?</strong></summary>
+<br>
+
+Not yet. This build compiles only the Doom engine. Heretic, Hexen, and Strife engines exist in the source but are not included in the NDS build.
+
+</details>
+
+</details>
+
+## License
+
+[GPL-2.0](COPYING.md)
+
+Based on [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom) by Simon Howard and contributors.
