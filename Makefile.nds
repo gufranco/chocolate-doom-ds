@@ -1,0 +1,18 @@
+# Host-side Makefile for NDS build via Docker
+.PHONY: build clean shell gdb
+
+build:
+	docker compose run --rm sdk sh -c "make -C arm7 && make -f Makefile.arm9"
+
+clean:
+	docker compose run --rm sdk sh -c "make -C arm7 clean; make -f Makefile.arm9 clean"
+
+shell:
+	docker compose run --rm sdk bash
+
+# Connect to melonDS GDB stub (enable in melonDS config: Gdb.Enabled = true)
+# Usage: start melonDS with the ROM, then run `make -f Makefile.nds gdb`
+gdb:
+	docker compose run --rm sdk gdb-multiarch build/chocolate_doom_ds.elf \
+		-ex "set architecture arm" \
+		-ex "target remote host.docker.internal:3333"
