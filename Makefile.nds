@@ -1,4 +1,9 @@
-# Host-side Makefile for NDS build via Docker
+# Host-side convenience wrapper.
+#
+# Delegates all compilation to a Docker container running the BlocksDS
+# SDK. Build order: ARM7 first (arm7/), then ARM9 (Makefile.arm9),
+# then ndstool combines both into the final .nds ROM.
+
 .PHONY: build clean shell gdb
 
 build:

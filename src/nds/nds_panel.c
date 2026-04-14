@@ -1,6 +1,16 @@
 // NDS bottom screen panel: boot, WAD selector, and gameplay HUD.
 // Uses ANSI escape codes for color on the libnds text console.
 //
+// The sub (bottom) screen is configured as a 4BPP tiled text console
+// giving a 32-column x 24-row character grid. libnds maps a subset of
+// ANSI escape sequences onto this hardware, so we can position the
+// cursor and set foreground colors without touching VRAM directly.
+//
+// Three display phases share this single console:
+//   1. Boot     -- hardware checks (CPU model, FAT mount).
+//   2. WAD menu -- D-pad selector when multiple IWADs are on the SD card.
+//   3. Gameplay -- live HUD: FPS, frame count, zone heap, sound cache.
+//
 // Grid: 32 columns (0-31) x 24 rows. ANSI positions are 1-indexed.
 // Every visible line must be at most 32 characters.
 
@@ -12,7 +22,28 @@
 #include "i_timer.h"
 #include "z_zone.h"
 
-// ANSI colors
+// ANSI color macros.
+//
+// libnds text console supports a small subset of ANSI SGR sequences:
+//   \x1b[<fg>;{0|1}m   where <fg> is 30-37 (standard colors)
+//                       and 0 = normal intensity, 1 = bright/bold.
+//
+// Quick reference for the escape codes used throughout this file:
+//   \x1b[r;cH   -- move cursor to row r, column c (1-indexed)
+//   \x1b[2J     -- clear the entire screen
+//   \x1b[39;0m  -- reset to default foreground, normal intensity
+//   \x1b[30-37m -- set foreground: 30=black 31=red 32=green
+//                   33=yellow 34=blue 35=magenta 36=cyan 37=white
+//   ;1m suffix  -- bright/bold variant of the chosen color
+//
+// Color scheme:
+//   CW (white,  bright) -- titles, main labels, prominent values
+//   CC (cyan,   bright) -- field labels ("WAD", "FPS", "Zone")
+//   CG (green,  bright) -- success indicators, selected menu item
+//   CR (red,    bright) -- error messages, fatal screens
+//   CY (yellow, bright) -- URLs and call-to-action text
+//   CD (white,  normal) -- dim separators, secondary text
+//   C0 (reset)          -- return to default after each colored span
 #define CW "\x1b[37;1m"
 #define CC "\x1b[36;1m"
 #define CG "\x1b[32;1m"
@@ -65,13 +96,21 @@ static char panel_mapname[12];
 static int boot_row = 5;
 static boolean gameplay_initialized = false;
 
-// FPS tracking
+// FPS tracking.
+// Sampled once every 60 frames using integer math: fps = df * 1000 / dt.
+// This avoids floating-point on the ARM9 and is accurate enough for a
+// diagnostic display that updates roughly once per second at 60 fps.
 static int frame_count = 0;
 static int fps_time_prev = 0;
 static int fps_frames_prev = 0;
 static int fps_current = 0;
 
-// Null stdout to suppress Doom engine startup noise
+// Suppress Doom engine printf spam during loading.
+// The vanilla Chocolate Doom startup prints dozens of lines of WAD lump
+// enumeration, texture counts, and demo headers. On a 32x24 grid those
+// scroll the boot screen off before the player can read it. Redirecting
+// stdout to this no-op sink keeps the loading screen clean.
+// Restored on the first gameplay frame (see NDS_Panel_DrawGameplay).
 static ssize_t null_stdout(const char *ptr, size_t len)
 {
 	(void)ptr;
@@ -193,6 +232,8 @@ void NDS_Panel_DrawGameplay(void)
 
 	if (!gameplay_initialized)
 	{
+		// First gameplay refresh: restore normal stdout so any later
+		// printf calls (debug, errors) reach the console again.
 		consoleSetCustomStdout(NULL);
 		consoleClear();
 		gameplay_initialized = true;
@@ -249,7 +290,10 @@ void NDS_Panel_DrawGameplay(void)
 	at(16); printf(CD "github.com/gufranco/");
 	at(17); printf(CD "chocolate-doom-ds/issues" C0);
 
-	// Clear unused rows
+	// Clear rows 18-24.
+	// The boot and WAD menu phases write into this area (error messages,
+	// menu items, footer hints). Without clearing, stale text from those
+	// earlier phases would remain visible behind the gameplay HUD.
 	for (int r = 18; r <= 24; r++)
 	{
 		at(r);

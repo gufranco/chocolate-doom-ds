@@ -1,5 +1,8 @@
-# ARM7 binary for Chocolate Doom DS
-# Built with BlocksDS. Enables MaxMod for sound effect playback.
+# ARM7 build for NDS.
+#
+# Compiles the secondary processor binary. The ARM7 handles audio
+# mixing (via MaxMod), touchscreen input, WiFi, and real-time clock.
+# This binary runs alongside the ARM9 (main game) on the NDS.
 
 export BLOCKSDS		?= /opt/blocksds/core
 export BLOCKSDSEXT	?= /opt/blocksds/external
@@ -9,8 +12,13 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 SOURCEDIRS	:= source
 INCLUDEDIRS	:=
 
+# -DUSE_MAXMOD: enables MaxMod integration in libnds ARM7 headers,
+# activating the audio mixer interrupt handlers on the ARM7 side.
 DEFINES		:= -DUSE_MAXMOD
 
+# -lmm7:  MaxMod ARM7 library (audio mixing, module playback)
+# -lnds7: libnds ARM7 library (hardware abstraction for ARM7 peripherals)
+# -lc:    newlib C standard library
 LIBS		:= -lmm7 -lnds7 -lc
 LIBDIRS		:= $(BLOCKSDS)/libs/maxmod \
 		   $(BLOCKSDS)/libs/libnds
@@ -34,6 +42,9 @@ endif
 
 SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
 
+# ARCH flags:
+#   -mthumb       = 16-bit Thumb ISA for smaller code
+#   -mcpu=arm7tdmi = NDS sub CPU (ARMv4T, no Thumb-2, no DSP extensions)
 ARCH		:= -mthumb -mcpu=arm7tdmi
 SPECS		:= $(BLOCKSDS)/sys/crts/ds_arm7.specs
 WARNFLAGS	:= -Wall -Wextra -Wpedantic -Wshadow
