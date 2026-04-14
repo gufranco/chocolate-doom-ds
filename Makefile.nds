@@ -3,11 +3,24 @@
 # Delegates all compilation to a Docker container running the BlocksDS
 # SDK. Build order: ARM7 first (arm7/), then ARM9 (Makefile.arm9),
 # then ndstool combines both into the final .nds ROM.
+#
+# Targets:
+#   build   - compile ARM7 + ARM9 + ROM
+#   debug   - compile with debug symbols and exception handler
+#   clean   - remove all build artifacts
+#   shell   - interactive bash inside the container
+#   gdb     - connect to melonDS GDB stub via .gdbinit
+#   run     - open the ROM in melonDS
+#   size    - show ARM7 + ARM9 binary sizes
+#   disasm  - dump ARM9 disassembly to arm9_disasm.txt
 
-.PHONY: build clean shell gdb
+.PHONY: build debug clean shell gdb run size disasm
 
 build:
 	docker compose run --rm sdk sh -c "make -C arm7 && make -f Makefile.arm9"
+
+debug:
+	docker compose run --rm sdk sh -c "make -C arm7 DEBUG=1 && make -f Makefile.arm9"
 
 clean:
 	docker compose run --rm sdk sh -c "make -C arm7 clean; make -f Makefile.arm9 clean"
@@ -15,9 +28,19 @@ clean:
 shell:
 	docker compose run --rm sdk bash
 
-# Connect to melonDS GDB stub (enable in melonDS config: Gdb.Enabled = true)
-# Usage: start melonDS with the ROM, then run `make -f Makefile.nds gdb`
+# Connect to melonDS GDB stub using .gdbinit for auto-configuration.
+# Requires melonDS GDB enabled (Settings -> Devtools -> Enable GDB stub).
 gdb:
-	docker compose run --rm sdk gdb-multiarch build/chocolate_doom_ds.elf \
-		-ex "set architecture arm" \
-		-ex "target remote host.docker.internal:3333"
+	docker compose run --rm sdk gdb-multiarch -x .gdbinit
+
+# Open the ROM in melonDS (macOS). Adjust for your platform.
+run:
+	open -a melonDS chocolate_doom_ds.nds
+
+# Show ARM7 + ARM9 binary sizes (text/data/bss).
+size:
+	docker compose run --rm sdk bash -c '$$WONDERFUL_TOOLCHAIN/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-size build/chocolate_doom_ds.elf arm7/build/arm7.elf'
+
+# Dump full ARM9 disassembly for analysis.
+disasm:
+	docker compose run --rm sdk bash -c '$$WONDERFUL_TOOLCHAIN/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-objdump -d build/chocolate_doom_ds.elf' > arm9_disasm.txt

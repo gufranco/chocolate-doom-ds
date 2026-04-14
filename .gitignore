@@ -66,5 +66,8 @@ GTAGS
 /.cache/clangd
 compile_commands.json
 *.nds
+*.elf
+*.map
 build/
 graphify-out/
+*_disasm.txt

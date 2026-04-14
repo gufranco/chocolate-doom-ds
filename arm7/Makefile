@@ -16,6 +16,12 @@ INCLUDEDIRS	:=
 # activating the audio mixer interrupt handlers on the ARM7 side.
 DEFINES		:= -DUSE_MAXMOD
 
+# DEBUG=1 enables the ARM7 exception handler (defaultExceptionHandler)
+# which sends crash info to ARM9 for display.
+ifeq ($(DEBUG),1)
+DEFINES		+= -DDEBUG_LIBS
+endif
+
 # -lmm7:  MaxMod ARM7 library (audio mixing, module playback)
 # -lnds7: libnds ARM7 library (hardware abstraction for ARM7 peripherals)
 # -lc:    newlib C standard library
