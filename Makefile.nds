@@ -33,9 +33,13 @@ shell:
 gdb:
 	docker compose run --rm sdk gdb-multiarch -x .gdbinit
 
-# Open the ROM in melonDS (macOS). Adjust for your platform.
+# Open the ROM in melonDS. Works on macOS (open -a) and Linux (xdg-open).
 run:
+ifeq ($(shell uname),Darwin)
 	open -a melonDS chocolate_doom_ds.nds
+else
+	xdg-open chocolate_doom_ds.nds
+endif
 
 # Show ARM7 + ARM9 binary sizes (text/data/bss).
 size:
