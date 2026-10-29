@@ -8,9 +8,9 @@
 
 <br>
 
-[![Build](https://github.com/gufranco/chocolate-doom-ds/actions/workflows/main.yml/badge.svg)](https://github.com/gufranco/chocolate-doom-ds/actions)
-[![License: GPL-2.0](https://img.shields.io/badge/License-GPL--2.0-blue.svg)](COPYING.md)
-[![Platform: NDS](https://img.shields.io/badge/Platform-Nintendo_DS-purple.svg)]()
+[![cpp-linter](https://img.shields.io/github/actions/workflow/status/gufranco/chocolate-doom-ds/cpp-linter.yml?branch=master&style=flat-square&label=cpp-linter)](https://github.com/gufranco/chocolate-doom-ds/actions/workflows/cpp-linter.yml)
+[![cppcheck](https://img.shields.io/github/actions/workflow/status/gufranco/chocolate-doom-ds/cppcheck.yml?branch=master&style=flat-square&label=cppcheck)](https://github.com/gufranco/chocolate-doom-ds/actions/workflows/cppcheck.yml)
+[![build](https://img.shields.io/github/actions/workflow/status/gufranco/chocolate-doom-ds/main.yml?branch=master&style=flat-square&label=build)](https://github.com/gufranco/chocolate-doom-ds/actions/workflows/main.yml)
 
 </div>
 
