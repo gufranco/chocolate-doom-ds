@@ -25,6 +25,7 @@
 #include "i_timer.h"
 #include "m_config.h"
 #include "m_misc.h"
+#include "nds_panel.h"
 
 // -----------------------------------------------------------------------
 // At-exit cleanup registry
@@ -162,7 +163,6 @@ void I_Error(const char *error, ...)
 	vsnprintf(buf, sizeof(buf), error, args);
 	va_end(args);
 
-	extern void NDS_Panel_FatalError(const char *);
 	NDS_Panel_FatalError(buf);
 
 	printf("\x1b[8;1H\x1b[37;0m  Press START to exit.\x1b[39;0m");
