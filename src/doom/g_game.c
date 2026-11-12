@@ -76,6 +76,10 @@
 
 #include "g_game.h"
 
+#ifdef __NDS__
+#include "nds/nds_panel.h"
+#endif
+
 
 #define SAVEGAMESIZE	0x2c000
 
@@ -720,7 +724,6 @@ void G_DoLoadLevel (void)
             snprintf(mapbuf, sizeof(mapbuf), "MAP%02d", gamemap);
         else
             snprintf(mapbuf, sizeof(mapbuf), "E%dM%d", gameepisode, gamemap);
-        extern void NDS_Panel_SetMap(const char *);
         NDS_Panel_SetMap(mapbuf);
     }
 #endif
