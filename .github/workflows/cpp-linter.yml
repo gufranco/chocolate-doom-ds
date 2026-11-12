@@ -28,7 +28,7 @@ jobs:
         with:
           style: file
           lines-changed-only: true
-          version: 16
+          version: 21
           tidy-checks: >-
             boost-*
             ,bugprone-*

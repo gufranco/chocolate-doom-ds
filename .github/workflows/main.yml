@@ -22,7 +22,7 @@ jobs:
         run: |
           docker build -t chocolate-doom-ds-sdk .
           docker run --rm -v ${{ github.workspace }}:/work -w /work chocolate-doom-ds-sdk \
-            make -f Makefile.arm9
+            sh -c "make -C arm7 && make -f Makefile.arm9"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

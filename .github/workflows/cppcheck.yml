@@ -20,4 +20,4 @@ jobs:
       - name: Run cppcheck
         env:
           ANALYZE: true
-        run: $GITHUB_WORKSPACE/.travis.sh
+        run: ./.travis.sh
